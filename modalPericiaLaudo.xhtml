@@ -1,0 +1,903 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<ui:composition xmlns="http://www.w3.org/1999/xhtml" xmlns:ui="http://java.sun.com/jsf/facelets" xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core" xmlns:c="http://java.sun.com/jsp/jstl/core" xmlns:p="http://primefaces.org/ui"
+	xmlns:pe="http://primefaces.org/ui/extensions">
+	<h:head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	</h:head>
+	<h:body>
+		<h:form id="formPericiaLaudo" prependId="false" enctype="multipart/form-data">
+			<p:panel id="panelLaudoConsulta" rendered="#{laudoBean.browsing}">
+				<p:outputPanel id="cadastroPericiaLaudo">
+					<p:fieldset legend="Evidências">
+						<p:dataTable id="datatableEscolherEvidencias" value="#{laudoBean.pericia.listPericiaEvidencia}" var="periciaEvidencia"
+							emptyMessage="Dados não encontrados!">
+							<p:column headerText="Id" width="40">
+								<h:outputText value="#{periciaEvidencia.evidencia.id}" />
+							</p:column>
+							<p:column headerText="Evidência/Envolvido">
+								<h:outputText value="#{periciaEvidencia.evidencia.resumo}" />
+							</p:column>
+							<p:column headerText="Utiliza no laudo" width="110" style="text-align:center;">
+								<p:selectBooleanCheckbox value="#{periciaEvidencia.utilizaNoLaudo}">
+									<p:ajax listener="#{laudoBean.alterarPericiaEvidencia(periciaEvidencia)}" update=":panelLaudoConsulta"
+										process="@this, datatableEscolherEvidencias" />
+								</p:selectBooleanCheckbox>
+							</p:column>
+							<p:column headerText="Lacre" width="80">
+								<h:outputText value="#{periciaEvidencia.evidencia.ultimoUsuarioLacreCustodia.lacre.numero}" />
+							</p:column>
+							<p:column headerText="Última Custódia" width="160">
+								<h:outputText value="#{periciaEvidencia.evidencia.ultimoUsuarioLacreCustodia.usuario.nome}" />
+							</p:column>
+						</p:dataTable>
+					</p:fieldset>
+				</p:outputPanel>
+
+				<p:outputPanel>
+					<!-- BOTÃO PARA INCLUIR LAUDO -->
+					<p:outputPanel rendered="#{laudoBean.browsing and empty laudoBean.pericia.listPericiaLaudo and 
+						(laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.TORTURA.id 
+						or laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.TORTURA_EM_FLAGRANTE.id)}">
+						
+						<p:outputPanel rendered="#{laudoBean.verificarDeclaracaoAnexada() == false}">
+							<div style="display:flex; padding:0.5rem; margin: 0.5rem 0; border-radius:4px; background: #ffecb3; border: 1px solid #ffc107; border-width:0 0 0 6px; color: #7f6003;">
+								<div style="margin-top:0.5%;">
+									<span  class="ui-messages-warn-icon"/>
+								</div>
+								<div style="width:100%; margin-left:1%;">
+									<p:outputLabel style="background: #ffecb3; border:none; color: #7f6003; width: 100%; margin-top:5px;" value="Declaração de Consentimento não foi anexada!"/>
+								</div>
+							</div>
+						</p:outputPanel>
+					</p:outputPanel>
+					
+					<p:commandButton action="#{laudoBean.prepararInclusaoLaudo}" update=":formPericiaLaudo"
+						rendered="#{laudoBean.browsing and empty laudoBean.pericia.listPericiaLaudo}"
+						value="#{laudoBean.solicitacaoProcedimentoPericial.setor.necropapiloscopia ? 'Incluir Parecer' : 'Incluir Laudo'}" />
+
+					<!-- BOTÃO PARA INCLUIR ADITAMENTO -->
+					<p:commandButton action="#{laudoBean.prepararAditamento}" update=":formPericiaLaudo"
+						rendered="#{laudoBean.browsing and laudoBean.pericia != null and laudoBean.possuiLaudoAssinado(laudoBean.pericia)}" value="Incluir Aditamento" />
+
+					<!-- BOTÃO FECHAR -->
+					<p:commandButton action="#{laudoBean.cancelar}" update=":formParent" rendered="#{laudoBean.browsing}" icon="fas fa-times"
+						styleClass="btn-x-fechar" style="border: none;background: transparent; margin-left: 385px; margin-top: -340px;" />
+				</p:outputPanel>
+
+				<br clear="all" />
+
+				<p:outputPanel id="panelLaudos">
+					<p:fieldset legend="Laudos">
+						<p:dataTable id="tblPericiaLaudo" value="#{laudoBean.pericia.listPericiaLaudo}" var="periciaLaudo" emptyMessage="Dados não encontrados!">
+							<p:column style="width:16px">
+								<p:outputPanel rendered="#{laudoBean.possuiLaudoAnexoAssinado(periciaLaudo) == false}">
+									<p:tooltip for="iconeNaoAssinado">
+										<p:outputLabel value="Laudo não foi assinado digitalmente." />
+									</p:tooltip>
+									<p:outputLabel id="iconeNaoAssinado">
+										<span class="fab fa-leanpub" style="color: #e67e22 !important; font-size: 12pt; padding-right: 10px;" />
+									</p:outputLabel>
+								</p:outputPanel>
+							</p:column>
+							<p:column headerText="Número">
+								<h:outputText value="#{strUtil.anoData(periciaLaudo.laudo.dataInclusao)}.#{strUtil.lpad(periciaLaudo.laudo.numero, 7, '0')}" />
+							</p:column>
+							<p:column headerText="Gerado em">
+								<h:outputText value="#{periciaLaudo.dataInclusao}" converter="dataHoraConverter" />
+							</p:column>
+							<p:column headerText="Tipo">
+								<h:outputText value="#{periciaLaudo.laudo.tipoLaudo.descricao}" />
+							</p:column>
+							<p:column headerText="Situação">
+								<h:outputText value="ASSINADO"
+									rendered="#{laudoBean.possuiLaudoAnexoAssinado(periciaLaudo) and periciaLaudo.laudo.ultimoLaudoAnexo.peritoRevisor == null}" />
+								<h:outputText value="ASSINADO"
+									rendered="#{periciaLaudo.laudo.ultimoLaudoAnexo != null and periciaLaudo.laudo.ultimoLaudoAnexo.tipoDocumentoAnexo == tipoDocumentoAnexoBean.LAUDO_ASSINADO_COM_REVISOR}" />
+								<h:outputText value="AGUARDANDO REVISÃO"
+									rendered="#{laudoBean.possuiLaudoAnexoAssinado(periciaLaudo) and periciaLaudo.laudo.ultimoLaudoAnexo.peritoRevisor != null and periciaLaudo.laudo.ultimoLaudoAnexo.tipoDocumentoAnexo != tipoDocumentoAnexoBean.LAUDO_ASSINADO_COM_REVISOR}" />
+								<h:outputText value="NÃO ASSINADO" rendered="#{laudoBean.possuiLaudoAnexoAssinado(periciaLaudo) == false}" />
+								<h:outputText
+									value=" Protocolo: #{periciaLaudo.laudo.ultimoLaudoAnexo.numeroProtocolo} - #{strUtil.dataFormatada(periciaLaudo.laudo.ultimoLaudoAnexo.dataProtocolo)}"
+									rendered="#{periciaLaudo.laudo.ultimoLaudoAnexo.numeroProtocolo != null}" />
+
+							</p:column>
+							<p:column headerText="Ações">
+								<div style="display: flex; flex-wrap: wrap;">
+									<!-- EXIBE ORIENTAÇÕES DO PERITO REVISOR PARA CORREÇÃO DO LAUDO-->
+									<p:outputPanel>
+										<p:tooltip for="orientacaoCorrecao">
+											<p:outputLabel value="Orientações para correção do laudo." />
+										</p:tooltip>
+										<p:commandLink id="orientacaoCorrecao" action="#{laudoBean.exibirOrientacaoCorrecao(periciaLaudo.laudo)}" update=":formOrientacaoCorrecao"
+											rendered="#{not empty periciaLaudo.laudo.descricaoCorrecao}">
+											<span class="fas fa-exclamation i-edit ml10" />
+										</p:commandLink>
+									</p:outputPanel>
+
+									<!-- PERMITE QUE SEJAM REALIZADAS ALTERAÇÕES NO LAUDO -->
+									<p:tooltip for="editLaudo">
+										<p:outputLabel value="Editar laudo" />
+									</p:tooltip>
+									<p:commandLink id="editLaudo" action="#{laudoBean.preparaAlteracao(periciaLaudo)}" update=":formPericiaLaudo"
+										rendered="#{!laudoBean.possuiLaudoAnexoAssinado(periciaLaudo)}">
+										<span class="fa fa-edit i-edit ml10" />
+									</p:commandLink>
+
+									<!-- FAZ DOWNLOAD DO LAUDO ANEXADO A SOLICITACAO -->
+									<p:tooltip for="visualizarLaudo">
+										<p:outputLabel value="Visualizar laudo" />
+									</p:tooltip>
+									<p:commandLink id="visualizarLaudo" ajax="false" onclick="PrimeFaces.monitorDownload(start, stop);" immediate="true"
+										rendered="#{periciaLaudo.laudo.ultimoLaudoAnexo != null}">
+										<span class="fa fa-eye i-eye ml10" />
+										<p:fileDownload value="#{laudoBean.downloadLaudoAnexo(periciaLaudo)}" />
+									</p:commandLink>
+
+									<!-- REALIZA A ASSINATURA DIGITAL DO LAUDO POR PERITO CRIMINAL -->
+									<p:tooltip for="assinarLaudo">
+										<p:outputLabel value="Assinar laudo" />
+									</p:tooltip>
+									<p:commandLink id="assinarLaudo" onclick="PrimeFaces.monitorDownload(start, pageRefresh)" ajax="false"
+										rendered="#{!laudoBean.usuarioAutenticado.peritoAdjunto and laudoBean.solicitacaoProcedimentoPericial.ultimaTramitacao.tipoMovimentacao.equals(tipoMovimentacaoBean.PERICIA_CONCLUIDA) and periciaLaudo.laudo.ultimoLaudoAnexo != null and laudoBean.possuiLaudoAnexoAssinado(periciaLaudo) == false and !laudoBean.solicitacaoProcedimentoPericial.setor.id.equals(setorBean.LIN.id) and (strUtil.servidorLocal('galileu.intranet') or strUtil.servidorLocal('localhost') or strUtil.servidorLocal('galileu.pefoce.ce.gov.br'))}">
+										<span class="fa fa-magic i-pencil ml10" />
+										<p:fileDownload value="#{laudoBean.assinar(periciaLaudo.laudo)}" />
+									</p:commandLink>
+
+									<!-- REALIZA A ASSINATURA DIGITAL DO LAUDO POR PERITO CRIMINAL ADJUNTO-->
+									<p:tooltip for="assinarLaudoAdjunto">
+										<p:outputLabel value="Assinar laudo" />
+									</p:tooltip>
+									<p:commandLink id="assinarLaudoAdjunto" action="#{laudoBean.prepararAssinarAdjunto(periciaLaudo.laudo)}" update=":formPeritoAdjunto"
+										rendered="#{laudoBean.usuarioAutenticado.peritoAdjunto and laudoBean.solicitacaoProcedimentoPericial.ultimaTramitacao.tipoMovimentacao.equals(tipoMovimentacaoBean.PERICIA_CONCLUIDA) and periciaLaudo.laudo.ultimoLaudoAnexo != null and laudoBean.possuiLaudoAnexoAssinado(periciaLaudo) == false and !laudoBean.solicitacaoProcedimentoPericial.setor.id.equals(setorBean.LIN.id) and (strUtil.servidorLocal('galileu.intranet') or strUtil.servidorLocal('localhost') or strUtil.servidorLocal('galileu.pefoce.ce.gov.br'))}">
+										<span class="fa fa-magic i-pencil ml10" />
+									</p:commandLink>
+									<!-- REALIZA A ASSINATURA ELETRÔNICA DO INFORMATIVO -->
+									<p:tooltip for="assinarInformativo">
+										<p:outputLabel value="Assinar informativo" />
+									</p:tooltip>
+									<p:commandLink id="assinarInformativo" action="#{laudoBean.assinarInformativo(periciaLaudo.laudo)}" update=":panelLaudos"
+										rendered="#{laudoBean.solicitacaoProcedimentoPericial.ultimaTramitacao.tipoMovimentacao.equals(tipoMovimentacaoBean.PERICIA_CONCLUIDA) and periciaLaudo.laudo.ultimoLaudoAnexo != null and laudoBean.possuiLaudoAnexoAssinado(periciaLaudo) == false and laudoBean.solicitacaoProcedimentoPericial.setor.id.equals(setorBean.LIN.id) and (strUtil.servidorLocal('galileu.intranet') or strUtil.servidorLocal('localhost') or strUtil.servidorLocal('galileu.pefoce.ce.gov.br'))}">
+										<span class="fa fa-magic i-pencil ml10" />
+										<p:confirm header="Confirme" message="Deseja realmente assinar o informativo?" icon="ui-icon-alert" />
+									</p:commandLink>
+
+									<p:remoteCommand update=":panelLaudos" actionListener="#{laudoBean.aguardando}" name="pageRefresh" />
+
+									<!-- REALIZA ENVIO DE LAUDO AO SIP SE OCORRER FALHAR OU SE O ENVIO NÃO ESTIVER AUTOMÁTICO -->
+									<p:outputPanel rendered="#{laudoBean.isPermiteEnvioSIP(periciaLaudo)}">
+										<p:tooltip for="enviarLaudo">
+											<p:outputLabel value="Enviar laudo ao SIP" />
+										</p:tooltip>
+										<p:commandLink id="enviarLaudo" action="#{laudoBean.enviarLaudo(periciaLaudo.laudo)}" update=":tblPericiaLaudo">
+											<span class="fa-layers fa-2x"> <i class="fas fa-square" /> <i class="fas fa-long-arrow-alt-right fa-fw fa-inverse"
+												data-fa-transform="shrink-5 up-4 left-2" /> <span class="fa-layers-text fa-inverse" data-fa-transform="shrink-8 down-2"
+												style="font-weight: 900">SIP</span>
+											</span>
+											<p:confirm header="Confirme" message="Deseja realmente enviar o laudo ao SIP?" icon="ui-icon-alert" />
+										</p:commandLink>
+									</p:outputPanel>
+									
+									
+									<!-- REALIZA ENVIO DE LAUDO AO DINAMO -->
+									<p:outputPanel> <!-- rendered="#{laudoBean.isPermiteEnvioDinamo(periciaLaudo)}" -->
+										<p:tooltip for="enviarLaudoDinamo">
+											<p:outputLabel value="Enviar laudo ao Dinamo" />
+										</p:tooltip>
+										<p:commandLink id="enviarLaudoDinamo" action="#{laudoBean.enviarLaudoDinamo(webserviceDinamoBean.criarJsonDinamo(periciaLaudo), webserviceDinamoBean.gerarToken())}" update=":tblPericiaLaudo" style="width:20px">
+											<span class="fa-layers fa-2x"> <i class="fas fa-square" /> <i class="fas fa-long-arrow-alt-right fa-fw fa-inverse"
+												data-fa-transform="shrink-5 up-4 left-2" /> <span class="fa-layers-text fa-inverse" data-fa-transform="shrink-8 down-2"
+												style="font-weight: 900">Din</span>
+											</span>
+											<p:confirm header="Confirme" message="Deseja realmente enviar o laudo ao Dinamo?" icon="ui-icon-alert" />
+										</p:commandLink>
+									</p:outputPanel>
+									<!-- 	laudoBean.enviarLaudoDinamo(webserviceDinamoBean.criarJsonDinamo(periciaLaudo), webserviceDinamoBean.gerarToken())								<p:outputPanel -->
+									<!-- 										rendered="#{(periciaLaudo.laudo.ultimoLaudoAnexo.tipoDocumentoAnexo == tipoDocumentoAnexoBean.LAUDO_ASSINADO and empty periciaLaudo.laudo.ultimoLaudoAnexo.numeroProtocolo and !laudoBean.usuarioAutenticado.peritoAdjunto) or  -->
+									<!-- 										            (periciaLaudo.laudo.ultimoLaudoAnexo.tipoDocumentoAnexo == tipoDocumentoAnexoBean.LAUDO_ASSINADO_COM_REVISOR and empty periciaLaudo.laudo.ultimoLaudoAnexo.numeroProtocolo and laudoBean.usuarioAutenticado.peritoAdjunto) or -->
+									<!-- 										            (periciaLaudo.laudo.ultimoLaudoAnexo.tipoDocumentoAnexo == tipoDocumentoAnexoBean.LAUDO_ASSINADO and not empty periciaLaudo.laudo.ultimoLaudoAnexo.numeroProtocolo and direitosUtil.isPossuiDireito('Administrador'))}"> -->
+									<!-- 										<p:tooltip for="enviarLaudo"> -->
+									<!-- 											<p:outputLabel value="Enviar laudo" /> -->
+									<!-- 										</p:tooltip> -->
+									<!-- 										<p:commandLink id="enviarLaudo" action="#{laudoBean.enviarLaudo(periciaLaudo.laudo)}" update=":tblPericiaLaudo"> -->
+									<!-- 											<span class="fa-layers fa-2x"> <i class="fas fa-square" /> <i class="fas fa-long-arrow-alt-right fa-fw fa-inverse" -->
+									<!-- 												data-fa-transform="shrink-5 up-4 left-2" /> <span class="fa-layers-text fa-inverse" data-fa-transform="shrink-8 down-2" -->
+									<!-- 												style="font-weight: 900">SIP</span> -->
+									<!-- 											</span> -->
+									<!-- 											<p:confirm header="Confirme" message="Deseja realmente enviar o laudo ao SIP?" icon="ui-icon-alert" /> -->
+									<!-- 										</p:commandLink> -->
+									<!-- 									</p:outputPanel> -->
+								</div>
+							</p:column>
+						</p:dataTable>
+					</p:fieldset>
+				</p:outputPanel>
+			</p:panel>
+
+			<p:panel id="panelLaudoCadastro" rendered="#{laudoBean.inserting or laudoBean.updating}">
+				<p:outputPanel style="margin-top: -10px; margin-bottom: 20px;">
+					<p:outputLabel value="Modelo" for="modeloCadastro" style="font-weight: bold;" />
+					<p:selectOneMenu id="modeloCadastro" value="#{laudoBean.laudo.laudoModeloTipoExameSetor}" converter="laudoModeloTipoExameSetorConverter"
+						filter="true" filterMatchMode="contains" required="true" disabled="#{laudoBean.updating}" appendTo="@this">
+						<f:selectItem noSelectionOption="true" itemLabel="[Selecione o modelo]" />
+						<f:selectItems value="#{laudoBean.listaLaudoModeloTipoExameSetor}" var="modelo" itemValue="#{modelo}" itemLabel="#{modelo.laudoModelo.apelido}" />
+						<p:ajax update=":panelSecoesLaudo :panelAcoesCadastro :panelGaleriaLaudo :panelPossuiQuesitosExtras :panelPossuiEsquemaCorporal :panelTutorialLaudoTorturaIstambul" listener="#{laudoBean.selecionarModelo}" />
+					</p:selectOneMenu>
+				</p:outputPanel>
+
+				<p:outputPanel style="margin-top: -10px; margin-bottom: 20px;" rendered="#{laudoBean.periciaLaudo.laudo.tipoLaudo == tipoLaudoBean.ADITAMENTO}">
+					<p:outputLabel for="descricaoMotivoAditamento" value="Motivo" />
+					<p:inputTextarea id="descricaoMotivoAditamento" value="#{laudoBean.periciaLaudo.laudo.motivoAditamento}" style="width:100%" cols="100" rows="3"
+						maxlength="400" required="true" />
+				</p:outputPanel>
+				
+				<p:outputPanel id="panelTutorialLaudoTorturaIstambul">
+					<p:outputPanel rendered="#{laudoBean.laudo.laudoModeloTipoExameSetor.tipoExameSetor.tipoExame.id == tipoExameBean.TORTURA.id
+												or laudoBean.laudo.laudoModeloTipoExameSetor.tipoExameSetor.tipoExame.id == tipoExameBean.TORTURA_EM_FLAGRANTE.id}">
+						<div class="campo">
+							<p:outputLabel value="Desejar Assistir ao Video Tutorial?" for="tutorialLaudoTorturaIstambul" />
+							<p:selectBooleanCheckbox id="tutorialLaudoTorturaIstambul" label="Desejar assistir ao video tutorial?" value="#{laudoBean.desejaVerTutorialLaudoTorturaIstambul}">
+								<p:ajax update=":panelTutorialLaudoTorturaIstambul" />
+							</p:selectBooleanCheckbox>
+						</div>
+						<p:outputPanel rendered="#{laudoBean.desejaVerTutorialLaudoTorturaIstambul}">
+							<p:media value="/resources/video/tortura_istambul.mp4" width="100%" height="600px">
+						        Seu navegador não pode exibir o video, <h:outputLink
+						            value="#{request.contextPath}/resources/video/tortura_istambul.mp4">click</h:outputLink> para baixar o video.
+						    </p:media>
+					    </p:outputPanel>
+					</p:outputPanel>
+				</p:outputPanel>
+				
+				<p:outputPanel id="panelPossuiQuesitosExtras">
+					<p:outputPanel rendered="#{laudoBean.laudo.laudoModeloTipoExameSetor.tipoExameSetor.tipoExame.id == tipoExameBean.TORTURA.id
+												or laudoBean.laudo.laudoModeloTipoExameSetor.tipoExameSetor.tipoExame.id == tipoExameBean.TORTURA_EM_FLAGRANTE.id}">
+						<div class="campo">
+							<p:outputLabel value="Foram Formulados Quesitos Extras na Solicitação de Perícia de Tortura?" for="quesitosExtras" />
+							<p:selectBooleanCheckbox id="quesitosExtras" label="Possui Quesitos Extras?" value="#{laudoBean.possuiQuesitoExtra}">
+								<p:ajax update=":panelSecoesLaudo" listener="#{laudoBean.adicionarOuRemoverQuesitoBlocoCinco}" />
+							</p:selectBooleanCheckbox>
+						</div>
+					</p:outputPanel>
+				</p:outputPanel>
+				
+				<p:outputPanel id="panelPossuiEsquemaCorporal">
+					<p:outputPanel rendered="#{laudoBean.laudo.laudoModeloTipoExameSetor.tipoExameSetor.tipoExame.id == tipoExameBean.TORTURA.id
+												or laudoBean.laudo.laudoModeloTipoExameSetor.tipoExameSetor.tipoExame.id == tipoExameBean.TORTURA_EM_FLAGRANTE.id}">
+						<div class="campo">
+							<p:outputLabel value="Deseja Fazer Esquema Corporal?" for="esquemaCorporal" />
+							<p:selectBooleanCheckbox id="esquemaCorporal" label="Deseja Fazer Esquema Corporal?" value="#{laudoBean.possuiEsquemaCorporal}">
+								<p:ajax update=":panelSecoesLaudo" />
+							</p:selectBooleanCheckbox>
+						</div>
+					</p:outputPanel>
+				</p:outputPanel>
+				
+				<!-- RESPOSTA PARA COVID19 -->
+				<p:outputPanel style="margin-top: -10px; margin-bottom: 20px; font-weight: bold; color: darkred !important;"
+					rendered="#{laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.LESAO_CORPORAL_FLAGRANTE.id 
+								or laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.LESAO_CORPORAL_FLAGRANTE_NUAC.id
+								or laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.EMBRIAGUEZ.id
+								or laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.CRIME_SEXUAL_FLAGRANTE.id}">
+					<p:outputLabel for="respostaCOVID19" value="#{laudoBean.perguntaCOVID19}" />
+					<p:selectOneRadio id="respostaCOVID19" value="#{laudoBean.periciaLaudo.laudo.respostaCOVID19}" unselectable="true" required="true">
+						<f:selectItems value="#{tipoRespostaCNJBean.listaTipoResposta}" var="respostaCOVID19" itemLabel="#{respostaCOVID19.descricao}"
+							itemValue="#{respostaCOVID19}" />
+					</p:selectOneRadio>
+
+					<p:outputLabel for="complementoCOVID19" value="Informações Complementares" />
+					<p:inputTextarea id="complementoCOVID19" value="#{laudoBean.periciaLaudo.laudo.complementoCOVID19}" style="width:100%" cols="100" rows="3"
+						maxlength="400" />
+				</p:outputPanel>
+
+
+				<!-- RESPOSTA PARA OUTRAS PATOLOGIAS -->
+				<p:outputPanel style="margin-top: -10px; margin-bottom: 20px; font-weight: bold; color: darkred !important;"
+					rendered="#{laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.LESAO_CORPORAL_FLAGRANTE.id 
+								or laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.LESAO_CORPORAL_FLAGRANTE_NUAC.id
+								or laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.EMBRIAGUEZ.id
+								or laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.CRIME_SEXUAL_FLAGRANTE.id}">
+					<p:outputLabel for="respostaPATOLOGIA" value="#{laudoBean.perguntaPatologias}" />
+					<p:selectOneRadio id="respostaPATOLOGIA" value="#{laudoBean.periciaLaudo.laudo.respostaPatologias}" unselectable="true" required="true">
+						<f:selectItems value="#{tipoRespostaCNJBean.listaTipoResposta}" var="respostaPatologia" itemLabel="#{respostaPatologia.descricao}"
+							itemValue="#{respostaPatologia}" />
+					</p:selectOneRadio>
+
+					<p:outputLabel for="complementoPatologias" value="Informações Complementares" />
+					<p:inputTextarea id="complementoPatologias" value="#{laudoBean.periciaLaudo.laudo.complementoPatologias}" style="width:100%" cols="100" rows="3"
+						maxlength="400" />
+				</p:outputPanel>
+
+				<!-- RESPOSTA DOCUMENTO MÉDICO -->
+				<p:outputPanel style="margin-top: -10px; margin-bottom: 20px; font-weight: bold; color: darkred !important;"
+					rendered="#{laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.LESAO_CORPORAL_FLAGRANTE.id 
+								or laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.LESAO_CORPORAL_FLAGRANTE_NUAC.id
+								or laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.EMBRIAGUEZ.id
+								or laudoBean.solicitacaoProcedimentoPericial.ultimoExameSolicitacao.tipoExameSetor.tipoExame.id == tipoExameBean.CRIME_SEXUAL_FLAGRANTE.id}">
+					<p:outputLabel for="respostaDocumentoMedico" value="#{laudoBean.perguntaDocumentoMedico}" />
+					<p:selectOneRadio id="respostaDocumentoMedico" value="#{laudoBean.periciaLaudo.laudo.respostaDocumentoMedico}" unselectable="true"
+						required="true">
+						<f:selectItems value="#{tipoRespostaCNJBean.listaTipoResposta}" var="respostaDocumentoMedico" itemLabel="#{respostaDocumentoMedico.descricao}"
+							itemValue="#{respostaDocumentoMedico}" />
+					</p:selectOneRadio>
+
+					<p:outputLabel for="complementDocumentoMedico" value="Informações Complementares" />
+					<p:inputTextarea id="complementDocumentoMedico" value="#{laudoBean.periciaLaudo.laudo.complementoDocumentoMedico}" style="width:100%" cols="100"
+						rows="3" maxlength="400" />
+				</p:outputPanel>
+
+				<p:outputPanel id="panelSecoesLaudo">
+
+					<p:outputPanel id="panelMetodologia" rendered="#{laudoBean.laudo.laudoModeloTipoExameSetor.laudoModelo.possuiMetodologia}">
+						<p:fieldset id="fieldsetMetodologia" legend="Metodologia" styleClass="fieldset-form">
+
+							<p:outputLabel for="modeloMetodologia" />
+							<p:selectOneMenu id="modeloMetodologia" value="#{laudoBean.laudoModeloMetodologiaSelecionada}" converter="laudoModeloMetodologiaConverter"
+								filter="true" filterMatchMode="contains" styleClass="fl" appendTo="@this">
+								<f:selectItem noSelectionOption="true" itemLabel="[Selecione a metodologia]" />
+								<f:selectItems value="#{laudoBean.listaLaudoModeloMetodologia}" var="modeloMetodologia" itemValue="#{modeloMetodologia}"
+									itemLabel="#{modeloMetodologia.metodologia.apelido}" />
+								<p:ajax update=":panelMetodologia" process="@this, btnAdicionarMetodologia" />
+							</p:selectOneMenu>
+
+							<p:commandButton id="btnAdicionarMetodologia" icon="fa fa-arrow-down" action="#{laudoBean.adicionarMetodologia}" update=":panelMetodologia"
+								disabled="#{laudoBean.laudoModeloMetodologiaSelecionada == null}" process="@this, panelMetodologia" styleClass="fl"
+								style="font-size: 17px; margin-top: 1px;" />
+
+							<br clear="all" />
+							<br clear="all" />
+
+							<p:dataTable id="datatableMetodologia" value="#{laudoBean.laudo.listaLaudoMetodologia}" var="laudoMetodologia" expandedRow="true"
+								emptyMessage="Nenhum registro encontrado!">
+								<p:column style="width:20px">
+									<p:rowToggler />
+								</p:column>
+
+								<p:column headerText="Metodologia">
+									<h:outputText value="#{laudoMetodologia.metodologia.apelido}" />
+								</p:column>
+
+								<p:column headerText="Ações">
+									<p:commandLink styleClass="fa fa-trash i-trash" action="#{laudoBean.excluirMetodologia(laudoMetodologia)}" process="@this"
+										update=":modeloMetodologia :datatableMetodologia" />
+								</p:column>
+
+								<p:rowExpansion>
+									<p:panelGrid>
+										<div class="campo">
+											<p:outputLabel for="descricaoMetodologia" value="Descrição" rendered="#{laudoMetodologia.metodologia.permiteEdicao}" />
+											<h:inputTextarea id="descricaoMetodologia" value="#{laudoMetodologia.descricao}" style="width:100%" cols="100" rows="3"
+												rendered="#{laudoMetodologia.metodologia.permiteEdicao}" required="true">
+												<p:ajax event="change" process="@this, descricaoMetodologia btnSalvarLaudo" update="descricaoMetodologia" async="5000" />
+											</h:inputTextarea>
+
+											<p:outputLabel for="descricaoMetodologiaDisable" value="Descrição" rendered="#{!laudoMetodologia.metodologia.permiteEdicao}" />
+											<h:inputTextarea id="descricaoMetodologiaDisable" value="#{laudoMetodologia.metodologia.descricao}" style="width:100%" cols="100" rows="3"
+												rendered="#{!laudoMetodologia.metodologia.permiteEdicao}" disabled="true" />
+										</div>
+									</p:panelGrid>
+								</p:rowExpansion>
+							</p:dataTable>
+						</p:fieldset>
+					</p:outputPanel>
+
+					<p:outputPanel rendered="#{laudoBean.laudo.laudoModeloTipoExameSetor.laudoModelo.possuiParecer}">
+						<p:fieldset id="fieldsetParecer" legend="Parecer">
+							<p:outputLabel value="Escreva seu parecer" for="parecerCadastro" />
+							<p:inputTextarea id="parecerCadastro" value="#{laudoBean.laudo.ultimoLaudoParecer.descricao}" cols="100" rows="3" required="true"
+								counter="displayParecer" counterTemplate="{0} caractere(s) restante(s)." autoResize="true" maxlength="20000">
+							</p:inputTextarea>
+							<p:outputLabel id="displayParecer" />
+						</p:fieldset>
+					</p:outputPanel>
+
+					<p:outputPanel id="panelConclusao" rendered="#{laudoBean.laudo.laudoModeloTipoExameSetor.laudoModelo.possuiConclusao}">
+						<p:fieldset id="fieldsetConclusao" legend="Conclusão">
+
+							<p:selectOneMenu id="modeloConclusao" value="#{laudoBean.laudoModeloConclusaoSelecionada}" converter="laudoModeloConclusaoConverter"
+								filter="true" filterMatchMode="contains" appendTo="@this">
+								<f:selectItem noSelectionOption="true" itemLabel="[Selecione a conclusão]" />
+								<f:selectItems value="#{laudoBean.listaLaudoModeloConclusao}" var="modeloConclusao" itemValue="#{modeloConclusao}"
+									itemLabel="#{modeloConclusao.conclusao.apelido}" />
+								<p:ajax update=":panelConclusao" process="@this, btnAdicionarConclusao" />
+							</p:selectOneMenu>
+
+							<p:commandButton id="btnAdicionarConclusao" icon="fa fa-arrow-down" style="margin-top: 1px; font-size: 17px;"
+								action="#{laudoBean.adicionarConclusao}" update=":panelConclusao" process="@this, panelConclusao"
+								disabled="#{laudoBean.laudoModeloConclusaoSelecionada == null}" />
+
+							<br clear="all" />
+							<br clear="all" />
+
+							<p:dataTable id="datatableConclusao" value="#{laudoBean.laudo.listaLaudoConclusao}" var="laudoConclusao" expandedRow="true"
+								emptyMessage="Nenhum registro encontrado!">
+								<p:column style="width:16px">
+									<p:rowToggler />
+								</p:column>
+
+								<p:column headerText="Conclusão">
+									<h:outputText value="#{laudoConclusao.conclusao.apelido}" />
+								</p:column>
+								<p:column headerText="Ações">
+									<p:commandLink styleClass="fa fa-trash i-trash" action="#{laudoBean.excluirConclusao(laudoConclusao)}" update=":panelConclusao" />
+								</p:column>
+
+								<p:rowExpansion>
+									<p:panelGrid>
+										<div class="campo">
+											<p:outputLabel for="descricaoConclusao" value="Descrição" rendered="#{laudoConclusao.conclusao.permiteEdicao}" />
+											<h:inputTextarea id="descricaoConclusao" value="#{laudoConclusao.descricao}" style="width:100%" cols="100" rows="3"
+												rendered="#{laudoConclusao.conclusao.permiteEdicao}" required="true">
+												<p:ajax event="change" process="@this descricaoConclusao btnSalvarLaudo" update="descricaoConclusao" />
+											</h:inputTextarea>
+
+											<p:outputLabel for="descricaoConclusaoDisable" value="Descrição" rendered="#{!laudoConclusao.conclusao.permiteEdicao}" />
+											<h:inputTextarea id="descricaoConclusaoDisable" value="#{laudoConclusao.conclusao.descricao}" style="width:100%" cols="100" rows="3"
+												rendered="#{!laudoConclusao.conclusao.permiteEdicao}" disabled="true" />
+										</div>
+									</p:panelGrid>
+								</p:rowExpansion>
+							</p:dataTable>
+						</p:fieldset>
+					</p:outputPanel>
+
+					<p:outputPanel id="panelEsquemaCorporal" rendered="#{laudoBean.possuiEsquemaCorporal}">
+						<p:fieldset legend="Esquema corporal">
+							<p:tabView styleClass="estiloTabViewEscolhaFiltro">
+								<p:tab title="Anterior">
+									<ui:include src="/pages/cruds/pericia/auxiliares/corpoHumanoFrente.xhtml"/>
+									<p:commandButton type="button" value="Download" process="@this, panelEsquemaCorporal" onclick="capturaFrente(); return false;"/>
+								</p:tab>
+								<p:tab title="Posterior">
+									<ui:include src="/pages/cruds/pericia/auxiliares/corpoHumanoCosta.xhtml"/>
+									<p:commandButton type="button" value="Download" process="@this, panelEsquemaCorporal" onclick="capturaCosta(); return false;"/>
+								</p:tab>
+							</p:tabView>
+						</p:fieldset>
+					</p:outputPanel>
+
+					<p:outputPanel id="panelQuesitoExtra" rendered="#{laudoBean.possuiQuesitoExtra}">
+						<p:fieldset id="fieldsetQuesitosExtras" legend="Quesitos Extras">
+						<p:outputPanel rendered="#{laudoBean.inserindoQuesitoExtra == false}">
+							<div class="campo">
+								<p:commandButton id="btnIncluirQuesitoExtra" value="Adicionar Quesito Extra" style="padding: 0;"
+									action="#{laudoBean.preparaAdicionarQuesitoExtra}" update=":panelSecoesLaudo" process="@this, panelQuesitoExtra" />
+							</div>
+						</p:outputPanel>
+							<p:outputPanel id="panelCadastroQuesitoExtra" rendered="#{laudoBean.inserindoQuesitoExtra}">
+								<div class="campo">
+									<p:outputLabel value="Numeração do Quesito / Ordem" for="ordemQuesitoExtra" />
+									<p:inputText id="ordemQuesitoExtra" value="#{laudoBean.ordemQuesitoExtra}" size="15" />
+								</div>
+								<br clear="all" />
+								<div class="campo">
+									<p:outputLabel value="Descrição do Quesito / Pergunta" for="descricaoQuesitoExtra" />
+									<p:inputTextarea id="descricaoQuesitoExtra" value="#{laudoBean.descricaoQuesitoExtra}" rows="4" cols="50" />
+								</div>
+								
+								<p:tooltip for="btnSalvarQuesitoExtra">
+									<p:outputLabel value="Salvar Quesito Extra" />
+								</p:tooltip>
+								<p:commandLink id="btnSalvarQuesitoExtra" title="Salvar Quesito Extra" action="#{laudoBean.adicionarQuesitoExtra}" update=":panelSecoesLaudo" process="@this, panelQuesitoExtra">
+									<p:confirm header="Adicionar" message="Após adicionar o quesito não será possível editá-lo, deseja continuar?" icon="ui-icon-alert" />
+									<span class="fa fa-check" style="color: green !important; font-size: 20pt; margin-top: 40px; margin-right: 10px;"/>
+								</p:commandLink>						
+								
+								<p:tooltip for="btnCancelarQuesitoExtra">
+									<p:outputLabel value="Cancelar Quesito Extra" />
+								</p:tooltip>
+								<p:commandLink id="btnCancelarQuesitoExtra" title="Cancelar Quesito Extra" action="#{laudoBean.cancelarQuesitoExtra}" update=":panelSecoesLaudo" process="@this, panelQuesitoExtra">
+									<span class="fas fa-ban" style="color: red !important; font-size: 20pt; margin-top: 40px; margin-right: 10px;"/>
+								</p:commandLink>
+							</p:outputPanel>
+						</p:fieldset>					
+					</p:outputPanel>
+
+					<p:outputPanel id="panelQuesito" rendered="#{laudoBean.laudo.laudoModeloTipoExameSetor.laudoModelo.possuiQuesito and laudoBean.possuiEsquemaCorporal==false}">
+						<p:fieldset id="fieldsetQuesitos" legend="Quesitos">
+
+							<p:selectOneMenu id="modeloQuesito" value="#{laudoBean.laudoModeloQuesitoSelecionado}" converter="laudoModeloQuesitoConverter" filter="true"
+								filterMatchMode="contains" style="width: 400px !important;" appendTo="@this">
+								<f:selectItem noSelectionOption="true" itemLabel="[Selecione o quesito]" />
+								<f:selectItems value="#{laudoBean.listaLaudoModeloQuesito}" var="modeloQuesito" itemValue="#{modeloQuesito}"
+									itemLabel="#{modeloQuesito.quesito.apelido}" itemDescription="#{modeloQuesito.quesito.descricao}" />
+								<p:ajax update="btnAdicionarQuesito" process="@this, btnAdicionarQuesito" />
+							</p:selectOneMenu>
+
+							<p:commandButton id="btnAdicionarQuesito" icon="fa fa-arrow-down" style="margin-top: 1px; font-size: 17px;"
+								action="#{laudoBean.adicionarQuesito}" update=":panelQuesito" process="@this, panelQuesito"
+								disabled="#{laudoBean.laudoModeloQuesitoSelecionado == null}" />
+
+							<br clear="all" />
+							<br clear="all" />
+
+							<p:dataTable id="datatableQuesito" value="#{laudoBean.laudo.listaLaudoQuesito}" var="laudoQuesito" expandedRow="true"
+								emptyMessage="Nenhum registro encontrado!">
+								<p:column style="width: 1%;">
+									<p:rowToggler />
+								</p:column>
+
+								<p:column headerText="Quesito" width="70">
+									<h:outputText value="#{laudoBean.atualizaContador(laudoQuesito)}-)  #{laudoQuesito.quesito.descricao}" />
+								</p:column>
+								
+								<p:column headerText="Bloco" width="30">
+									<h:outputText value="#{laudoQuesito.quesito.bloco.descricao}" />
+								</p:column>
+
+								<p:column headerText="Ações" style="width: 5%; text-align: center;">
+									<p:commandLink styleClass="fa fa-trash i-trash" action="#{laudoBean.excluirQuesito(laudoQuesito)}" update=":formPericiaLaudo" />
+								</p:column>
+
+								<p:rowExpansion id="rowExpansionResposta" styleClass="estiloRowExpensionLaudo">
+									<p:outputPanel id="panelRespostaQuesito">
+										<p:panelGrid>
+											<div class="campo">
+												<p:outputLabel for="textoRespostaQuesito" value="Resposta" />
+
+												<p:selectOneMenu value="#{laudoQuesito.quesito.respostaPadrao}" autoWidth="false" converter="respostaPadraoConverter" filter="true"
+													filterMatchMode="contains" panelStyleClass="estiloSelectOneMenuRowExpension">
+													<f:selectItem noSelectionOption="true" itemLabel="[Resposta Rápida]" />
+													<f:selectItems value="#{respostaPadraoBean.buscarListaRespostaPadraoParaModelo(laudoQuesito)}" var="respostaPadrao"
+														itemValue="#{respostaPadrao}" itemLabel="#{respostaPadrao.apelido}" itemDescription="#{respostaPadrao.descricao}" />
+													<p:ajax event="change" listener="#{laudoBean.preencherQuesitoRespostaPadrao(laudoQuesito)}" update="panelRespostaQuesito" process="@this" />
+												</p:selectOneMenu>
+
+												<br clear="all" />
+
+												<p:inputTextarea id="textoRespostaQuesito" required="true" value="#{laudoQuesito.resposta}" style="width:100% !important; height:80px" cols="100"
+													rows="2" requiredMessage="A resposta do quesito não foi informada." counter="displayRespostaQuesitoCadastro"
+													counterTemplate="{0} caractere(s) restante(s)." autoResize="false" maxlength="2000">
+													<p:ajax event="change" process="@this, textoRespostaQuesito btnSalvarLaudo" update="textoRespostaQuesito" />
+												</p:inputTextarea>
+												<p:outputLabel id="displayRespostaQuesitoCadastro" />
+											</div>
+										</p:panelGrid>
+									</p:outputPanel>
+								</p:rowExpansion>
+							</p:dataTable>
+						</p:fieldset>
+					</p:outputPanel>
+
+					<p:outputPanel id="panelNotas" rendered="#{laudoBean.laudo.laudoModeloTipoExameSetor.laudoModelo.possuiNotas}">
+						<p:fieldset id="fieldsetNotas" legend="Notas">
+
+							<p:selectOneMenu id="modeloNotas" value="#{laudoBean.laudoModeloNotasSelecionadas}" converter="laudoModeloNotasConverter" filter="true"
+								filterMatchMode="contains" appendTo="@this" panelStyle="width:180px" effect="fade" style="width:900px">
+								<f:selectItem noSelectionOption="true" itemLabel="[Selecione as Notas]" />
+								<f:selectItems value="#{laudoBean.listaLaudoModeloNotas}" var="modeloNotas" itemValue="#{modeloNotas}"
+									itemLabel="#{modeloNotas.notas.descricao}" />
+								<p:ajax update=":panelNotas" process="@this, btnAdicionarNotas" />
+							</p:selectOneMenu>
+
+							<p:commandButton id="btnAdicionarNotas" icon="fa fa-arrow-down" style="margin-top: 1px; font-size: 17px;" action="#{laudoBean.adicionarNotas}"
+								update=":panelNotas" process="@this, panelNotas" disabled="#{laudoBean.laudoModeloNotasSelecionadas == null}" />
+
+							<br clear="all" />
+							<br clear="all" />
+
+							<p:dataTable id="datatableNotas" value="#{laudoBean.laudo.listaLaudoNotas}" var="laudoNotas" expandedRow="true"
+								emptyMessage="Nenhum registro encontrado!">
+								<p:column style="width:16px">
+									<p:rowToggler />
+								</p:column>
+
+								<p:column headerText="Notas">
+									<h:outputText value="#{laudoNotas.notas.descricao}" />
+								</p:column>
+								<p:column headerText="Ações">
+									<p:commandLink styleClass="fa fa-trash i-trash" action="#{laudoBean.excluirNotas(laudoNotas)}" update=":formPericiaLaudo" />
+								</p:column>
+
+								<p:rowExpansion>
+									<p:panelGrid>
+										<div class="campo">
+											<p:outputLabel for="descricaoNotas" value="Descrição" rendered="#{laudoNotas.notas.permiteEdicao}" />
+											<h:inputTextarea id="descricaoNotas" value="#{laudoNotas.notas.descricao}" style="width:100%" cols="100" rows="3"
+												rendered="#{laudoNotas.notas.permiteEdicao}" required="true">
+												<p:ajax event="change" process="@this, descricaoNotas" update="descricaoNotas" />
+											</h:inputTextarea>
+
+											<p:outputLabel for="descricaoNotasDisable" value="Descrição" rendered="#{!laudoNotas.notas.permiteEdicao}" />
+											<h:inputTextarea id="descricaoNotasDisable" value="#{laudoNotas.notas.descricao}" style="width:100%" cols="100" rows="3"
+												rendered="#{!laudoNotas.notas.permiteEdicao}" disabled="true" />
+										</div>
+									</p:panelGrid>
+								</p:rowExpansion>
+							</p:dataTable>
+						</p:fieldset>
+					</p:outputPanel>
+
+				</p:outputPanel>
+
+				<p:outputPanel id="panelGaleriaLaudo">
+					<p:fieldset>
+						<div class="campo">
+							<p:fileUpload id="anexoLaudoFoto" fileUploadListener="#{laudoBean.uploadLaudoFoto}" mode="advanced" dragDropSupport="true"
+								update=":panelGaleriaLaudo" allowTypes="/(\.|\/)(jpe?g|png)$/" label="Selecionar foto " multiple="false" accept="image/jpeg,image/png"
+								auto="true" invalidSizeMessage="O arquivo selecionado ultrapassa o limite para envio." />
+						</div>
+
+						<p:outputPanel rendered="#{laudoBean.laudoFotoAnexada != null}">
+							<div class="campo">
+								<p:outputLabel value="Descrição" for="descricaoLaudoFoto" />
+								<p:inputTextarea id="descricaoLaudoFoto" value="#{laudoBean.descricaoLaudoFoto}" cols="50" rows="3" required="true" />
+							</div>
+
+							<div class="campo">
+								<p:commandButton value="Adicionar foto" action="#{laudoBean.adicionarLaudoFoto}" update=":panelGaleriaLaudo"
+									process="@this, anexoLaudoFoto descricaoLaudoFoto" />
+							</div>
+						</p:outputPanel>
+
+						<br clear="all" />
+
+						<p:outputPanel style="text-align: center;" rendered="#{empty laudoBean.laudo.listaLaudoFoto}">
+							<h:graphicImage url="/images/layout/galileu-alpha.png" width="400" />
+						</p:outputPanel>
+						<p:fieldset
+							legend="#{laudoBean.solicitacaoProcedimentoPericial.setor.id.equals(setorBean.LIN.id) ? 'Galeria de fotos do Informativo' : 'Galeria de fotos do Laudo'}"
+							styleClass="fieldset-sub" style="margin-top: 0px !important;">
+
+							<p:carousel value="#{laudoBean.laudo.listaLaudoFoto}" headerText="Fotos anexadas" var="imagem" itemStyle="height:600px;text-align:center"
+								numVisible="1" easing="easeOutBounce" style="width:700px" circular="true" rendered="#{not empty laudoBean.laudo.listaLaudoFoto}">
+								<p:panel style="width:100%">
+									<f:facet name="header">
+										<p:outputLabel value="#{imagem.descricao}" />
+									</f:facet>
+									<!-- 									<p:graphicImage url="#{imagem.byteToImage}"></p:graphicImage> -->
+									<h:graphicImage value="#{imagem.dataURL}" rendered="#{not empty imagem.dataURL}" height="400" title="#{imagem.descricao}" alt="" />
+
+									<f:facet name="footer">
+										<div style="text-align: center;">
+											<div style="display: flex; flex-wrap: wrap; vertical-align: middle; padding-left: 5px !important;">
+												<div>
+													<p:outputLabel value="Utilizando no laudo?" style="margin-top: 10px; padding-left: 20px; padding-right: 3px;" />
+													<p:selectBooleanButton id="sbbUtilizaNoLaudo" onLabel="Sim" offLabel="Não" label="Utilizar no Laudo" value="#{imagem.utilizarNoLaudo}">
+														<p:ajax listener="#{laudoBean.atualizarFoto(imagem)}" process="sbbUtilizaNoLaudo" update="sbbUtilizaNoLaudo tamanhoExpandido" />
+													</p:selectBooleanButton>
+												</div>
+												<div>
+													<p:outputPanel id="tamanhoExpandido">
+														<p:outputPanel rendered="#{imagem.utilizarNoLaudo}">
+															<p:outputLabel value="Utilizar tamanho expandido?" style="margin-top: 10px; padding-left: 20px; padding-right: 3px;" />
+															<p:selectBooleanButton id="sbbTamanhoExpandido" onLabel="Sim" offLabel="Não" label="Utilizar tamanho expandido" value="#{imagem.tamanhoExpandido}">
+																<p:ajax listener="#{laudoBean.atualizarFoto(imagem)}" process="sbbTamanhoExpandido" update="sbbTamanhoExpandido" />
+															</p:selectBooleanButton>
+														</p:outputPanel>
+													</p:outputPanel>
+												</div>
+												<div style="margin-top: auto;">
+													<p:commandButton id="btnExcluirImagemGaleriaLaudo" value="Exclui foto da galeria" action="#{laudoBean.excluirFotoGaleria(imagem)}"
+														update=":panelGaleriaLaudo" process="btnExcluirImagemGaleriaLaudo" />
+												</div>
+											</div>
+										</div>
+									</f:facet>
+								</p:panel>
+							</p:carousel>
+						</p:fieldset>
+					</p:fieldset>
+
+					<br clear="all" />
+
+				</p:outputPanel>
+
+				<div class="campo">
+					<p:outputPanel id="panelAcoesCadastro">
+						<br clear="all" />
+						<p:remoteCommand update=":formPericiaLaudo" name="atualiza" />
+						<div class="campo">
+<!-- 							<p:commandButton styleClass="fl" id="btnDownloadLaudoModelo" ajax="false" value="Download modelo" -->
+<!-- 								onclick="PrimeFaces.monitorDownload(start, atualiza);" rendered="#{laudoBean.updating}"> -->
+<!-- 								<p:fileDownload value="#{laudoBean.downloadLaudoModelo()}" /> -->
+<!-- 							</p:commandButton> -->
+
+							<p:commandButton id="btnDownloadLaudoAtual" action="#{laudoBean.downloadLaudoDocumentoAtual}" value="Download modelo" rendered="#{laudoBean.updating}"
+								update=":formPericiaLaudo" />
+
+							<p:fileUpload id="arquivoLaudoAnexo" fileUploadListener="#{laudoBean.uploadLaudoDocumento}" auto="true" mode="advanced" multiple="false"
+								skinSimple="true" allowTypes="/(\.|\/)(odt)$/" update=":formPericiaLaudo" accept="application/vnd.oasis.opendocument.text"
+								sizeLimit="12582912" invalidSizeMessage="O arquivo ultrapassa o valor permitido de 10MB! Comprima as imagens no LibreOffice."
+								label="#{(laudoBean.laudoUpload != null or laudoBean.ultimoLaudoAnexo != null) ? 'Substituir Documento Gerado' : 'Anexar Documento Gerado'}"
+								rendered="#{laudoBean.updating}" process="arquivoLaudoAnexo descricaoMotivoAditamento parecerCadastro" />
+						</div>
+
+						<div class="campo">
+							<p:commandButton id="btnGerarLaudoModelo" action="#{laudoBean.gerarLaudo}" value="Gerar Documento"
+								rendered="#{laudoBean.inserting and !laudoBean.laudo.laudoModeloTipoExameSetor.laudoModelo.laudoRapido}" update=":formPericiaLaudo" />
+
+							<p:commandButton id="downloadLaudo" ajax="false" style="display: none;">
+								<p:fileDownload value="#{laudoBean.downloadLaudoModelo}" />
+							</p:commandButton>
+
+							<p:commandButton id="btnSalvarLaudoRapido" action="#{laudoBean.salvarLaudoRapido}" update=":formPericiaLaudo" value="Laudo Rápido"
+								rendered="#{laudoBean.inserting and laudoBean.laudo.laudoModeloTipoExameSetor.laudoModelo.laudoRapido}" />
+
+							<p:commandButton id="btnSalvarLaudo" action="#{laudoBean.salvarLaudo}" update=":formPericiaLaudo" value="Salvar Documento"
+								rendered="#{laudoBean.updating}" />
+							<p:commandButton id="btnCancelarInclusao" action="#{laudoBean.cancelarLaudo}" rendered="#{!laudoBean.browsing}" update=":formPericiaLaudo"
+								immediate="true" value="Cancelar" styleClass="btn-red ml10" />
+						</div>
+					</p:outputPanel>
+
+				</div>
+			</p:panel>
+		</h:form>
+
+		<!-- ROTINA PARA EMISSÃO DE LACRES/ETIQUETAS NO SISTEMA -->
+		<!-- 		<p:dialog header="Visualizando laudos" styleClass="dialog-in-dialog" widgetVar="modalDocumentoAssinadoDlg" appendTo="@(body)" showEffect="fade" -->
+		<!-- 			height="700" width="900" resizable="false" modal="true" draggable="false" closable="true"> -->
+		<!-- 			<h:form id="formVisualizarLaudo"> -->
+		<!-- 				<pe:documentViewer height="600" value="#{laudoBean.visualizarLaudoParaAssinatura}" download="extensions-rocks.pdf" locale="#{laudoBean.locale}" /> -->
+		<!-- 			</h:form> -->
+		<!-- 		</p:dialog> -->
+
+		<!-- ROTINA PARA ASSINATURA DO PERITO ADJUNTO ESCOLHENDO O PERITO REVISOR -->
+		<p:dialog header="Escolher perito revisor" styleClass="dialog-in-dialog" widgetVar="modalPeritoRevisorDlg" appendTo="@(body)" showEffect="fade"
+			height="150" width="500" resizable="false" modal="true" draggable="false" closable="true">
+			<h:form id="formPeritoAdjunto">
+				<div class="campo">
+					<p:outputLabel value="Perito" for="peritoRevisor" style="font-weight: bold;" />
+					<p:selectOneMenu id="peritoRevisor" value="#{laudoBean.peritoRevisorSelecionado}" converter="usuarioConverter" filter="true"
+						filterMatchMode="contains" required="true">
+						<f:selectItem noSelectionOption="true" itemLabel="[Selecione o perito revisor]" />
+						<f:selectItems value="#{usuarioBean.buscarPeritosSemAdjuntosPorCoordenacao}" var="usuario" itemValue="#{usuario}" itemLabel="#{usuario.nome}" />
+					</p:selectOneMenu>
+				</div>
+				<div class="campo">
+					<!-- BOTÃO PARA CONFIRMAR ASSINATURA DO PERITO ADJUNTO -->
+					<p:commandButton value="Confirmar" onclick="PF('modalPeritoRevisorDlg').hide(); PrimeFaces.monitorDownload(start, pageRefresh)" ajax="false">
+						<p:fileDownload value="#{laudoBean.assinar(laudoBean.laudo)}" />
+					</p:commandButton>
+
+					<!-- BOTÃO FECHAR -->
+					<p:commandButton action="#{laudoBean.cancelarAssinaturaAdjunto}" value="Cancelar" styleClass="btn-red" immediate="true" />
+				</div>
+
+			</h:form>
+		</p:dialog>
+
+		<p:dialog header="Orientações para correções no Laudo" styleClass="dialog-in-dialog" widgetVar="modalOrientacaoCorrecaoLaudoDlg" appendTo="@(body)"
+			showEffect="fade" height="300" width="640" resizable="false" modal="true" draggable="false" closable="true">
+			<h:form id="formOrientacaoCorrecao" prependId="false" enctype="multipart/form-data">
+				<p:outputPanel>
+					<div class="campo">
+						<p:outputLabel value="O que deve ser corrigido?" for="descricaoCorrecao" />
+						<p:inputTextarea id="descricaoCorrecao" value="#{laudoBean.laudo.descricaoCorrecao}" cols="80" rows="9" required="true" maxlength="2000"
+							counter="displayDescricaoCorrecao" counterTemplate="{0} caractere(s) restante(s)." readonly="true" />
+						<p:outputLabel id="displayDescricaoCorrecao" />
+					</div>
+
+					<div class="campo">
+						<p:commandButton action="#{laudoBean.fecharOrientacaoCorrecao}" styleClass="btn-red" value="Fechar" immediate="true" />
+					</div>
+				</p:outputPanel>
+			</h:form>
+
+		</p:dialog>
+		<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+		<script  src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+		<script type="text/javascript">
+		//<![CDATA[ 
+			function exibirBorda(x) {
+				 console.log("Adicionando: " +$(x).attr('id'));
+				 $(x).addClass("exibirBorda");
+				}
+			
+			function removerBorda(x) {
+				  console.log("Removendo: " + $(x).attr('id'));
+				  $(x).removeClass("exibirBorda");
+				}
+			
+			function capturarTela(){
+				console.log("capturando tela...");
+			
+				html2canvas(document.querySelector("#boxBodyFrente")).then(canvas => {
+				    document.body.appendChild(canvas);
+				    $("#arquivoCorpoFrente").val(canvas.toDataURL());
+				});
+			
+				html2canvas(document.querySelector("#capture")).then(canvas => {
+				    document.body.appendChild(canvas)
+				});
+			}
+			
+			function capturaFrente() {
+				$(".boxBodyFrente").find(':checkbox').each(function () {
+					if(!this.checked){
+						$(this).css("display","none");
+						} 
+					});
+				  const captureElement = document.querySelector('#capturaFrente')
+				  html2canvas(captureElement)
+				    .then(canvas => {
+				      canvas.style.display = 'none'
+				      document.body.appendChild(canvas)
+				      return canvas
+				    })
+				    .then(canvas => {
+				      const image = canvas.toDataURL('image/jpeg').replace('image/jpeg', 'image/octet-stream')
+				      const a = document.createElement('a')
+				      a.setAttribute('download', 'Anterior.jpeg')
+				      a.setAttribute('href', image)
+				      a.click()
+				      canvas.remove()
+				    })
+				    $(".boxBodyFrente").find(':checkbox').each(function () {
+						if(!this.checked){
+							$(this).css("display","initial");
+							} 
+						});
+				}
+
+			function capturaCosta() {
+				$(".boxBodyCosta").find(':checkbox').each(function () {
+					if(!this.checked){
+						$(this).css("display","none");
+						} 
+					});
+				  const captureElement = document.querySelector('#capturaCosta')
+				  html2canvas(captureElement)
+				    .then(canvas => {
+				      canvas.style.display = 'none'
+				      document.body.appendChild(canvas)
+				      return canvas
+				    })
+				    .then(canvas => {
+				      const image = canvas.toDataURL('image/jpeg').replace('image/jpeg', 'image/octet-stream')
+				      const a = document.createElement('a')
+				      a.setAttribute('download', 'Posterior.jpeg')
+				      a.setAttribute('href', image)
+				      a.click()
+				      canvas.remove()
+				    })
+				    $(".boxBodyCosta").find(':checkbox').each(function () {
+						if(!this.checked){
+							$(this).css("display","initial");
+							} 
+						});
+				}
+
+				function preencherTextoCosta(checkbox){
+					var texto =  $("#descCosta").text();
+					var descricao = $(checkbox).attr("data-descricao");
+					if(checkbox.checked && !texto.includes(descricao)){
+						if(texto != null && texto.trim().length > 0  ){
+							texto = texto + "\n" + descricao + ":";
+						} else {
+							texto = descricao + ":";
+						}
+					}else {
+						if(texto.includes(descricao)){
+//				 			var removerTexto = "<font color='red'><s>" + descricao + "</s></font>";
+//				 			texto.replace(descricao, removerTexto);
+						}
+					}
+					//PF('descCosta').jq.val(texto);
+					$("#descCosta").text(texto);
+				}
+				
+				function preencherTextoFrente(checkbox){
+					var texto =  $("#descFrente").text();
+					var descricao = $(checkbox).attr("data-descricao");
+					if(checkbox.checked && !texto.includes(descricao)){
+						if(texto != null && texto.trim().length > 0  ){
+							texto = texto + "\n" + descricao + ":";
+						} else {
+							texto = descricao + ":";
+						}
+					}else {
+						if(texto.includes(descricao)){
+//				 			var removerTexto = "<font color='red'><s>" + descricao + "</s></font>";
+//				 			texto.replace(descricao, removerTexto);
+						}
+					}
+					//PF('descFrente').jq.val(texto);
+					$("#descFrente").text(texto);
+				}
+			//]]> 
+			</script>
+	</h:body>
+</ui:composition>
